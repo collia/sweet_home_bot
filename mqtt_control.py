@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-A small example subscriber
-"""
+
 import paho.mqtt.client as paho
 import json
 
