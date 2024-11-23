@@ -5,6 +5,14 @@ from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, Callback
 import mqtt_control
 import sweet_home_controller
 
+import gettext
+import locale
+
+# Choose language dynamically or set by locale
+lang = gettext.translation('telegram_bot', localedir='locale', languages=['ua'])
+lang.install()
+_ = lang.gettext
+
 def send_message(bot, msg):
     print(msg)
     for chat_id in sweet_home_controller.telegram_get_subsribed_users():
@@ -16,13 +24,13 @@ def start(update: Update, context: CallbackContext):
     print("Request start from user {}".format(chat_id))
     if sweet_home_controller.telegram_is_user_allowed(chat_id):
         keyboard = [
-            [InlineKeyboardButton("Status", callback_data='status')],
-            [InlineKeyboardButton("Config", callback_data='config')],
-            [InlineKeyboardButton("Debug", callback_data='debug')],
+            [InlineKeyboardButton(_("Status"), callback_data='status')],
+            [InlineKeyboardButton(_("Config"), callback_data='config')],
+            [InlineKeyboardButton(_("Debug"), callback_data='debug')],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         # Send the menu
-        context.bot.send_message(chat_id=chat_id, text="Choose an option:", reply_markup=reply_markup)
+        context.bot.send_message(chat_id=chat_id, text=_("Sweet home bot"), reply_markup=reply_markup)
     else:
         context.bot.send_message(chat_id=chat_id, text="Access denied")
 
@@ -39,36 +47,40 @@ def button(update: Update, context: CallbackContext):
         
     if query.data == 'config':
         keyboard = [
-            [InlineKeyboardButton("Subscribe", callback_data='subscribe')],
-            [InlineKeyboardButton("Unsubscribe", callback_data='unsubscribe')],
+            [InlineKeyboardButton(_("Subscribe"), callback_data='subscribe')],
+            [InlineKeyboardButton(_("Unsubscribe"), callback_data='unsubscribe')],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         # Send the menu
         #context.bot.send_message(chat_id=chat_id, text="Change an configuration:", reply_markup=reply_markup)
-        query.edit_message_text(text="Change an configuration:", reply_markup=reply_markup)
+        query.edit_message_text(text=_("Change an configuration:"), reply_markup=reply_markup)
     elif query.data == 'status':
         keyboard = [
-            [InlineKeyboardButton("Detailed", callback_data='detailed status')],
+            [InlineKeyboardButton(_("Detailed"), callback_data='detailed status')],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         # Send the menu
         #context.bot.send_message(chat_id=chat_id, text="Change an configuration:", reply_markup=reply_markup)
-        query.edit_message_text(text="device1: motion detected\n device2: temperature 33C humodity 25%\ndevice3: temperature 33C humodity 26%", reply_markup=reply_markup)
- 
+        text = sweet_home_controller.devices_get_last_messages()
+        query.edit_message_text(text=text, reply_markup=reply_markup)
+    elif query.data == 'detailed status':
+        text = sweet_home_controller.devices_get_last_messages(False)
+        query.edit_message_text(text=text)
+
     elif query.data == 'subscribe':
         if not sweet_home_controller.telegram_is_user_subsribed(chat_id):
             sweet_home_controller.telegram_set_user_subsribed(chat_id, True)
-            query.edit_message_text(text="You have subscribed to messages!")
+            query.edit_message_text(text=_("You have subscribed to messages!"))
         else:
-            query.edit_message_text(text="You are already subscribed.")
+            query.edit_message_text(text=_("You are already subscribed."))
     
     # Handle unsubscription
     elif query.data == 'unsubscribe':
         if sweet_home_controller.telegram_is_user_subsribed(chat_id):
             sweet_home_controller.telegram_set_user_subsribed(chat_id, False)
-            query.edit_message_text(text="You have unsubscribed from messages.")
+            query.edit_message_text(text=_("You have unsubscribed from messages."))
         else:
-            query.edit_message_text(text="You are not subscribed.")
+            query.edit_message_text(text=_("You are not subscribed."))
             
 def telegram_bot_init(bot_token, mqtt_context):
     bot = Bot(token=bot_token)
