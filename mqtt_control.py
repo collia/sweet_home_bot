@@ -4,7 +4,6 @@
 import paho.mqtt.client as paho
 import json
 
-#sensors_params = {'0x00124b002916fe44' : {'name': 'Main door'}}
 
 _devices = []
 
@@ -19,52 +18,15 @@ def on_device_message(mosq, obj, msg):
             _devices.append(dev)
             endpoint = 'zigbee2mqtt/' + dev['friendly_name']
             obj['client'].subscribe(endpoint, 0)
-            #print(endpoint)
-            #obj['client'].message_callback_add(endpoint, on_motion_detector_message)
-            #print(obj['client'])
-            if dev["definition"]["description"] == "Motion sensor":
-                obj['motion sensors'].append(endpoint)
-            if dev["definition"]["description"] == "Temperature and humidity sensor":
-                obj['temperature sensors'].append(endpoint)
+    obj['device callback'](_generate_device_tree(payload))
 
 def get_devices_list():
     return [dev['friendly_name'] for dev in _devices]
 
-# def on_motion_detector_message(msg, cb):
-#     payload = json.loads(msg.payload.decode("utf-8"))
-#     device = msg.topic.split('/')[-1]
-#     name = device
-#     if device in sensors_params:
-#         if 'name' in sensors_params[device]:
-#             name = sensors_params[device]['name']
-
-#     if payload['occupancy'] == True:
-#         if payload['battery_low'] == True:
-#             battery = "Low"
-#         else:
-#             battery = "Full"
-#         cb("{}: motion detected, battery {}%".format(name, payload['battery']))
-
-# def on_temperature_message(msg, cb):
-#     payload = json.loads(msg.payload.decode("utf-8"))
-#     device = msg.topic.split('/')[-1]
-#     name = device
-#     if device in sensors_params:
-#         if 'name' in sensors_params[device]:
-#             name = sensors_params[device]['name']
-
-#     cb("{}: temperature {} humidity {}% battery {}%".format(name,
-#                                                             payload['temperature'],
-#                                                                 payload['humidity'],
-#                                                                 payload['battery']))
+def _generate_device_tree(msg):
+    return msg
 
 def on_message(mosq, obj, msg):
-    #if msg.topic in obj['motion sensors']:
-    #    on_motion_detector_message(msg, obj["callback"])
-    #elif msg.topic in obj['temperature sensors']:
-    #    on_temperature_message(msg, obj["callback"])
-    #else:
-    #    print("Error: %-20s %d %s" % (msg.topic, msg.qos, msg.payload))
     device = msg.topic.split('/')[-1]
     payload = json.loads(msg.payload.decode("utf-8"))
     obj["callback"](device, payload)
@@ -72,11 +34,11 @@ def on_message(mosq, obj, msg):
 def on_publish(mosq, obj, mid):
     pass
 
-def registry_device_message(ip, port, callback):
+def registry_device_message(ip, port, callback, device_callback):
     client = paho.Client()
     client.on_message = on_message
     client.on_publish = on_publish
-    context = {'client': client, 'motion sensors': [], 'temperature sensors':[], "callback":callback }
+    context = {'client': client, "callback":callback, "device callback":device_callback }
     client.user_data_set(context)
 
     #client.tls_set('root.ca', certfile='c1.crt', keyfile='c1.key')
@@ -97,9 +59,8 @@ def get_detailed_info(context):
         #device = m.split('/')[-1]
         #client.publish(m + '/get', '{"state": ""}')
 
-def mqtt_init(callback, ip, port):
-    context = registry_device_message(ip, port, callback)
-    #client = registry_device_message("localhost", 1883, callback)
+def mqtt_init(ip, port, callback, device_callback):
+    context = registry_device_message(ip, port, callback, device_callback)
     return context
 
 def mqtt_run(context):

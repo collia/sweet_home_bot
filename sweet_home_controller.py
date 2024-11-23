@@ -114,7 +114,9 @@ def devices_get_last_messages(short=True):
             if short:
                 msg_formated = devices_callbacks[d]["Format short"](d, msg[1])
             else:
-                msg_formated = devices_callbacks[d]["Format detailed"](d, msg[1])
+                msg_formated = "\n{}:\n{}".format(
+                    msg[0],
+                    devices_callbacks[d]["Format detailed"](d, msg[1]))
             result = result + name + ': ' + msg_formated + '\n'
         else:
             result = result + name + ': No  records\n'
@@ -169,6 +171,9 @@ devices_callbacks = {
     }
 }
 
+def mqtt_device_message(devices_tree):
+    #telegram_bot.send_message(_telegram_bot, devices_tree)
+    pass
 
 def mqtt_message(device, msg):
     if device in devices_callbacks:
@@ -178,7 +183,7 @@ def mqtt_message(device, msg):
     mqtt_statistic.statistic_append(device, msg)
 
 def controller_init():
-    _mqtt_context = mqtt_control.mqtt_init(mqtt_message, _config.get_mqtt_ip(), _config.get_mqtt_port())
+    _mqtt_context = mqtt_control.mqtt_init(_config.get_mqtt_ip(), _config.get_mqtt_port(), mqtt_message, mqtt_device_message)
     global _telegram_bot
     _telegram_bot = telegram_bot.telegram_bot_init(_config.get_telegram_token(), _mqtt_context)
     mqtt_statistic.statistic_init()
