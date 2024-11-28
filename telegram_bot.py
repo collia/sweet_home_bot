@@ -23,16 +23,17 @@ def send_html_message(bot, msg):
     for chat_id in sweet_home_controller.telegram_get_subsribed_users():
         bot.send_message(chat_id=chat_id, text=msg, parse_mode=ParseMode.HTML)
 
+MAIN_MENU = [
+    [InlineKeyboardButton(_("Status"), callback_data='status')],
+    [InlineKeyboardButton(_("Config"), callback_data='config')],
+    [InlineKeyboardButton(_("Debug"), callback_data='debug')],
+]
 # Start command handler to display the subscription menu
 def start(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
     print("Request start from user {}".format(chat_id))
     if sweet_home_controller.telegram_is_user_allowed(chat_id):
-        keyboard = [
-            [InlineKeyboardButton(_("Status"), callback_data='status')],
-            [InlineKeyboardButton(_("Config"), callback_data='config')],
-            [InlineKeyboardButton(_("Debug"), callback_data='debug')],
-        ]
+        keyboard = MAIN_MENU
         reply_markup = InlineKeyboardMarkup(keyboard)
         # Send the menu
         context.bot.send_message(chat_id=chat_id, text=_("Sweet home bot"), reply_markup=reply_markup)
@@ -54,6 +55,7 @@ def button(update: Update, context: CallbackContext):
         keyboard = [
             [InlineKeyboardButton(_("Subscribe"), callback_data='subscribe')],
             [InlineKeyboardButton(_("Unsubscribe"), callback_data='unsubscribe')],
+            [InlineKeyboardButton(_("Main menu"), callback_data='main menu')],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         # Send the menu
@@ -62,6 +64,7 @@ def button(update: Update, context: CallbackContext):
     elif query.data == 'status':
         keyboard = [
             [InlineKeyboardButton(_("Detailed"), callback_data='detailed status')],
+            [InlineKeyboardButton(_("Main menu"), callback_data='main menu')],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         # Send the menu
@@ -69,23 +72,41 @@ def button(update: Update, context: CallbackContext):
         text = sweet_home_controller.devices_get_last_messages()
         query.edit_message_text(text=text, reply_markup=reply_markup)
     elif query.data == 'detailed status':
+        keyboard = [
+            [InlineKeyboardButton(_("Main menu"), callback_data='main menu')],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
         text = sweet_home_controller.devices_get_last_messages(False)
-        query.edit_message_text(text=text)
-
+        query.edit_message_text(text=text, reply_markup=reply_markup)
     elif query.data == 'subscribe':
+        keyboard = [
+            [InlineKeyboardButton(_("Main menu"), callback_data='main menu')],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
         if not sweet_home_controller.telegram_is_user_subsribed(chat_id):
             sweet_home_controller.telegram_set_user_subsribed(chat_id, True)
-            query.edit_message_text(text=_("You have subscribed to messages!"))
+            query.edit_message_text(text=_("You have subscribed to messages!"), reply_markup=reply_markup)
         else:
-            query.edit_message_text(text=_("You are already subscribed."))
+            query.edit_message_text(text=_("You are already subscribed."), reply_markup=reply_markup)
 
     # Handle unsubscription
     elif query.data == 'unsubscribe':
+        keyboard = [
+            [InlineKeyboardButton(_("Main menu"), callback_data='main menu')],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
         if sweet_home_controller.telegram_is_user_subsribed(chat_id):
             sweet_home_controller.telegram_set_user_subsribed(chat_id, False)
-            query.edit_message_text(text=_("You have unsubscribed from messages."))
+            query.edit_message_text(text=_("You have unsubscribed from messages."), reply_markup=reply_markup)
         else:
-            query.edit_message_text(text=_("You are not subscribed."))
+            query.edit_message_text(text=_("You are not subscribed."), reply_markup=reply_markup)
+    elif query.data == 'main menu':
+        keyboard = MAIN_MENU
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        query.edit_message_text(text=_("Sweet home bot"), reply_markup=reply_markup)
+
 
 def telegram_bot_init(bot_token, mqtt_context):
     bot = Bot(token=bot_token)
