@@ -172,8 +172,24 @@ devices_callbacks = {
 }
 
 def mqtt_device_message(devices_tree):
-    #telegram_bot.send_message(_telegram_bot, devices_tree)
-    pass
+    telegram_bot.send_html_message(_telegram_bot, dict_to_html(devices_tree))
+    #print(devices_tree)
+
+def dict_to_html(data, level=0):
+    """Convert a nested dictionary into an HTML unordered list."""
+    html = []
+    indent = "  " * level
+
+    for key, value in data.items():
+        html.append(f"{indent}<strong>{key}:</strong>")
+        if isinstance(value, dict):  # Recursive case for nested dictionaries
+            html.append(dict_to_html(value, level+1))
+        else:  # Base case for key-value pairs
+            if key == 'friendly_name':
+                html.append("{} - {}".format(indent, _config.get_device_name(value)))
+            else:
+                html.append(f"{indent} - {value}")
+    return "\n".join(html)
 
 def mqtt_message(device, msg):
     if device in devices_callbacks:

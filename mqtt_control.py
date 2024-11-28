@@ -24,7 +24,32 @@ def get_devices_list():
     return [dev['friendly_name'] for dev in _devices]
 
 def _generate_device_tree(msg):
-    return msg
+    device_tree = {}
+    for dev in msg:
+        if dev["disabled"] == False:
+            if dev["type"] == 'Coordinator':
+                if not dev["ieee_address"] in device_tree:
+                    device_tree[dev["ieee_address"]] = {"friendly_name":dev["friendly_name"],
+                                                        "Subdevices":{}}
+            if dev["type"] == 'EndDevice' or dev["type"] == 'Router':
+               for ep_record in dev["endpoints"]:
+                   #print(dev["endpoints"][str(ep_record)]["bindings"])
+                   if dev["endpoints"][str(ep_record)]["bindings"]:
+                       endpoint = dev["endpoints"][str(ep_record)]["bindings"][0]["target"]["ieee_address"]
+                       if not endpoint in device_tree:
+                           device_tree[endpoint] = {"friendly_name":endpoint,
+                                                           "Subdevices":{}}
+                       device_tree[endpoint]["Subdevices"][dev["ieee_address"]] = {"friendly_name":dev["friendly_name"],
+                                                                                     "description":dev["definition"]["description"],
+                                                                                     "model":dev["definition"]["model"],
+                                                                                     "vendor":dev["definition"]["vendor"]}
+                   else:
+                       device_tree[dev["ieee_address"]] = {"friendly_name":dev["friendly_name"],
+                                                           "description":dev["definition"]["description"],
+                                                           "model":dev["definition"]["model"],
+                                                           "vendor":dev["definition"]["vendor"]}
+
+    return device_tree
 
 def on_message(mosq, obj, msg):
     device = msg.topic.split('/')[-1]

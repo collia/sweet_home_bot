@@ -1,6 +1,6 @@
 import time
 #import schedule
-from telegram import Bot, Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Bot, Update, InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
 import mqtt_control
 import sweet_home_controller
@@ -17,6 +17,11 @@ def send_message(bot, msg):
     print(msg)
     for chat_id in sweet_home_controller.telegram_get_subsribed_users():
         bot.send_message(chat_id=chat_id, text=msg)
+
+def send_html_message(bot, msg):
+    print(msg)
+    for chat_id in sweet_home_controller.telegram_get_subsribed_users():
+        bot.send_message(chat_id=chat_id, text=msg, parse_mode=ParseMode.HTML)
 
 # Start command handler to display the subscription menu
 def start(update: Update, context: CallbackContext):
@@ -44,7 +49,7 @@ def button(update: Update, context: CallbackContext):
     if not sweet_home_controller.telegram_is_user_allowed(chat_id):
         context.bot.send_message(chat_id=chat_id, text="Access denied")
         return
-        
+
     if query.data == 'config':
         keyboard = [
             [InlineKeyboardButton(_("Subscribe"), callback_data='subscribe')],
@@ -73,7 +78,7 @@ def button(update: Update, context: CallbackContext):
             query.edit_message_text(text=_("You have subscribed to messages!"))
         else:
             query.edit_message_text(text=_("You are already subscribed."))
-    
+
     # Handle unsubscription
     elif query.data == 'unsubscribe':
         if sweet_home_controller.telegram_is_user_subsribed(chat_id):
@@ -81,12 +86,12 @@ def button(update: Update, context: CallbackContext):
             query.edit_message_text(text=_("You have unsubscribed from messages."))
         else:
             query.edit_message_text(text=_("You are not subscribed."))
-            
+
 def telegram_bot_init(bot_token, mqtt_context):
     bot = Bot(token=bot_token)
     updater = Updater(token=bot_token, use_context=True)
     dispatcher = updater.dispatcher
-    
+
     # Command handler for /start
     dispatcher.add_handler(CommandHandler("start", start))
     # CallbackQueryHandler to handle subscribe/unsubscribe button presses
@@ -97,7 +102,7 @@ def telegram_bot_init(bot_token, mqtt_context):
 
     # Run the scheduler in a background thread
     #def run_schedule():
-    #    while True: 
+    #    while True:
     #        schedule.run_pending()
     #        time.sleep(1)
 
