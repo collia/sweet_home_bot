@@ -7,6 +7,9 @@ import sweet_home_controller
 
 import gettext
 import locale
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # Choose language dynamically or set by locale
 lang = gettext.translation('telegram_bot', localedir='locale', languages=['ua'])
@@ -40,7 +43,7 @@ def start(update: Update, context: CallbackContext):
     else:
         context.bot.send_message(chat_id=chat_id, text="Access denied")
 
-# Handle button presses for subscribe/unsubscribe
+# Handle button presses
 def button(update: Update, context: CallbackContext):
     query = update.callback_query
     chat_id = query.message.chat_id
@@ -64,6 +67,7 @@ def button(update: Update, context: CallbackContext):
     elif query.data == 'status':
         keyboard = [
             [InlineKeyboardButton(_("Detailed"), callback_data='detailed status')],
+            [InlineKeyboardButton(_("Statistic"), callback_data='statistic')],
             [InlineKeyboardButton(_("Main menu"), callback_data='main menu')],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -71,6 +75,35 @@ def button(update: Update, context: CallbackContext):
         #context.bot.send_message(chat_id=chat_id, text="Change an configuration:", reply_markup=reply_markup)
         text = sweet_home_controller.devices_get_last_messages()
         query.edit_message_text(text=text, reply_markup=reply_markup)
+    elif query.data == 'statistic':
+        keyboard = [
+            [InlineKeyboardButton(_("daily"), callback_data='statistic 1 day')],
+            [InlineKeyboardButton(_("weekly"), callback_data='statistic 7 day')],
+            [InlineKeyboardButton(_("Main menu"), callback_data='main menu')],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        # Send the menu
+        query.edit_message_text(text=_("Statistic period"), reply_markup=reply_markup)
+    elif query.data == 'statistic 1 day':
+        keyboard = [
+            [InlineKeyboardButton(_("Main menu"), callback_data='main menu')],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        images = sweet_home_controller.devices_get_statistic_graph(1)
+        query.edit_message_text(text=_("1 day statistic"), reply_markup=reply_markup)
+        for i in images:
+            context.bot.send_photo(chat_id=chat_id, photo=i, caption="Here's your statistics graph!")
+            i.close()
+    elif query.data == 'statistic 7 day':
+        keyboard = [
+            [InlineKeyboardButton(_("Main menu"), callback_data='main menu')],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        images = sweet_home_controller.devices_get_statistic_graph(7)
+        query.edit_message_text(text=_("week statistic"), reply_markup=reply_markup)
+        for i in images:
+            context.bot.send_photo(chat_id=chat_id, photo=i, caption="Here's your statistics graph!")
+            i.close()
     elif query.data == 'detailed status':
         keyboard = [
             [InlineKeyboardButton(_("Main menu"), callback_data='main menu')],
@@ -110,25 +143,28 @@ def button(update: Update, context: CallbackContext):
 
 def telegram_bot_init(bot_token, mqtt_context):
     bot = Bot(token=bot_token)
-    updater = Updater(token=bot_token, use_context=True)
-    dispatcher = updater.dispatcher
+    try:
+        updater = Updater(token=bot_token, use_context=True, request_kwargs={'read_timeout': 20, 'connect_timeout': 20})
+        dispatcher = updater.dispatcher
 
-    # Command handler for /start
-    dispatcher.add_handler(CommandHandler("start", start))
-    # CallbackQueryHandler to handle subscribe/unsubscribe button presses
-    dispatcher.add_handler(CallbackQueryHandler(button))
+        # Command handler for /start
+        dispatcher.add_handler(CommandHandler("start", start))
+        # CallbackQueryHandler to handle subscribe/unsubscribe button presses
+        dispatcher.add_handler(CallbackQueryHandler(button))
 
-    # Schedule the periodic message
-    #schedule.every().hour.do(send_periodic_message)
+        # Schedule the periodic message
+        #schedule.every().hour.do(send_periodic_message)
 
-    # Run the scheduler in a background thread
-    #def run_schedule():
-    #    while True:
-    #        schedule.run_pending()
-    #        time.sleep(1)
+        # Run the scheduler in a background thread
+        #def run_schedule():
+        #    while True:
+        #        schedule.run_pending()
+        #        time.sleep(1)
 
-    # Start the bot and the scheduler
-    updater.start_polling()
+        # Start the bot and the scheduler
+        updater.start_polling()
+    except Exception as e:
+        logging.exception("An error occurred while starting the bot.")
     #run_schedule()
     return bot
 

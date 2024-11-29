@@ -10,6 +10,7 @@ import math
 class Configuration:
     settings_file = 'config.json'
     settings = {}
+    telegram_bot = None
     def __init__(self):
         self.read_settings()
         #print(self.settings['Telegram']['Bot token'])
@@ -122,6 +123,15 @@ def devices_get_last_messages(short=True):
             result = result + name + ': No  records\n'
     return result
 
+def devices_get_statistic_graph(days):
+    result = []
+    for d in mqtt_control.get_devices_list():
+        if mqtt_control.get_device_type(d) == 'Temperature and humidity sensor':
+            name = _config.get_device_name(d)
+            result.append(mqtt_statistic.get_statistic_graph(d, [('temperature', 'Temperature (В°C)'), ('humidity', 'Humidity (%)')], days, f"{name}: Temperature and Humidity Statistics for {days} days"))
+    return result
+    #telegram_bot.send_message(_telegram_bot, name)
+
 def motion_detector_format_short(dev, payload):
     if payload['occupancy'] == True:
          return "motion was detected"
@@ -199,9 +209,9 @@ def mqtt_message(device, msg):
     mqtt_statistic.statistic_append(device, msg)
 
 def controller_init():
-    _mqtt_context = mqtt_control.mqtt_init(_config.get_mqtt_ip(), _config.get_mqtt_port(), mqtt_message, mqtt_device_message)
     global _telegram_bot
-    _telegram_bot = telegram_bot.telegram_bot_init(_config.get_telegram_token(), _mqtt_context)
+    _mqtt_context = mqtt_control.mqtt_init(_config.get_mqtt_ip(), _config.get_mqtt_port(), mqtt_message, mqtt_device_message)
+    _telegram_bot = (telegram_bot.telegram_bot_init(_config.get_telegram_token(), _mqtt_context))
     mqtt_statistic.statistic_init()
     mqtt_control.mqtt_run(_mqtt_context)
 

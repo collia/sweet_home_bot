@@ -23,6 +23,12 @@ def on_device_message(mosq, obj, msg):
 def get_devices_list():
     return [dev['friendly_name'] for dev in _devices]
 
+def get_device_type(dev):
+    for d in _devices:
+        if d['friendly_name'] == dev:
+            return d['definition']['description']
+    return ''
+
 def _generate_device_tree(msg):
     device_tree = {}
     for dev in msg:
