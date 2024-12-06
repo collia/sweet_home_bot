@@ -1,13 +1,16 @@
 import time
 #import schedule
-from telegram import Bot, Update, InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
+from telegram import Bot, Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, Application, ContextTypes
+
 import mqtt_control
 import sweet_home_controller
 
 import gettext
 import locale
 import logging
+import asyncio
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -16,15 +19,20 @@ lang = gettext.translation('telegram_bot', localedir='locale', languages=['ua'])
 lang.install()
 _ = lang.gettext
 
-def send_message(bot, msg):
+def send_message(bot,  msg):
     print(msg)
+    async def send_msg(bot, chat, msg):
+        await bot.send_message(chat_id=chat, text=msg)
     for chat_id in sweet_home_controller.telegram_get_subsribed_users():
-        bot.send_message(chat_id=chat_id, text=msg)
+        asyncio.run_coroutine_threadsafe(send_msg(bot["bot"], chat_id, msg), bot["loop"])
 
-def send_html_message(bot, msg):
+def send_html_message(bot,  msg):
     print(msg)
+    async def send_msg(bot, chat, msg):
+        await bot.send_message(chat_id=chat, text=msg, parse_mode=ParseMode.HTML)
+
     for chat_id in sweet_home_controller.telegram_get_subsribed_users():
-        bot.send_message(chat_id=chat_id, text=msg, parse_mode=ParseMode.HTML)
+        asyncio.run_coroutine_threadsafe(send_msg(bot["bot"], chat_id, msg), bot["loop"])
 
 MAIN_MENU = [
     [InlineKeyboardButton(_("Status"), callback_data='status')],
@@ -32,26 +40,26 @@ MAIN_MENU = [
     [InlineKeyboardButton(_("Debug"), callback_data='debug')],
 ]
 # Start command handler to display the subscription menu
-def start(update: Update, context: CallbackContext):
+async def start(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
     print("Request start from user {}".format(chat_id))
     if sweet_home_controller.telegram_is_user_allowed(chat_id):
         keyboard = MAIN_MENU
         reply_markup = InlineKeyboardMarkup(keyboard)
         # Send the menu
-        context.bot.send_message(chat_id=chat_id, text=_("Sweet home bot"), reply_markup=reply_markup)
+        await context.bot.send_message(chat_id=chat_id, text=_("Sweet home bot"), reply_markup=reply_markup)
     else:
-        context.bot.send_message(chat_id=chat_id, text="Access denied")
+        await context.bot.send_message(chat_id=chat_id, text="Access denied")
 
 # Handle button presses
-def button(update: Update, context: CallbackContext):
+async def button(update: Update, context: CallbackContext):
     query = update.callback_query
     chat_id = query.message.chat_id
     query.answer()
     print("Request button from user {}".format(chat_id))
     # Handle subscription
     if not sweet_home_controller.telegram_is_user_allowed(chat_id):
-        context.bot.send_message(chat_id=chat_id, text="Access denied")
+        await context.bot.send_message(chat_id=chat_id, text="Access denied")
         return
 
     if query.data == 'config':
@@ -63,7 +71,7 @@ def button(update: Update, context: CallbackContext):
         reply_markup = InlineKeyboardMarkup(keyboard)
         # Send the menu
         #context.bot.send_message(chat_id=chat_id, text="Change an configuration:", reply_markup=reply_markup)
-        query.edit_message_text(text=_("Change an configuration:"), reply_markup=reply_markup)
+        await query.edit_message_text(text=_("Change an configuration:"), reply_markup=reply_markup)
     elif query.data == 'status':
         keyboard = [
             [InlineKeyboardButton(_("Detailed"), callback_data='detailed status')],
@@ -74,7 +82,10 @@ def button(update: Update, context: CallbackContext):
         # Send the menu
         #context.bot.send_message(chat_id=chat_id, text="Change an configuration:", reply_markup=reply_markup)
         text = sweet_home_controller.devices_get_last_messages()
-        query.edit_message_text(text=text, reply_markup=reply_markup)
+        print(text)
+        if text == '':
+            text = "No data"
+        await query.edit_message_text(text=text, reply_markup=reply_markup)
     elif query.data == 'statistic':
         keyboard = [
             [InlineKeyboardButton(_("daily"), callback_data='statistic 1 day')],
@@ -83,16 +94,16 @@ def button(update: Update, context: CallbackContext):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         # Send the menu
-        query.edit_message_text(text=_("Statistic period"), reply_markup=reply_markup)
+        await query.edit_message_text(text=_("Statistic period"), reply_markup=reply_markup)
     elif query.data == 'statistic 1 day':
         keyboard = [
             [InlineKeyboardButton(_("Main menu"), callback_data='main menu')],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         images = sweet_home_controller.devices_get_statistic_graph(1)
-        query.edit_message_text(text=_("1 day statistic"), reply_markup=reply_markup)
+        await query.edit_message_text(text=_("1 day statistic"), reply_markup=reply_markup)
         for i in images:
-            context.bot.send_photo(chat_id=chat_id, photo=i, caption="Here's your statistics graph!")
+            await context.bot.send_photo(chat_id=chat_id, photo=i, caption="Here's your statistics graph!")
             i.close()
     elif query.data == 'statistic 7 day':
         keyboard = [
@@ -100,9 +111,9 @@ def button(update: Update, context: CallbackContext):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         images = sweet_home_controller.devices_get_statistic_graph(7)
-        query.edit_message_text(text=_("week statistic"), reply_markup=reply_markup)
+        await query.edit_message_text(text=_("week statistic"), reply_markup=reply_markup)
         for i in images:
-            context.bot.send_photo(chat_id=chat_id, photo=i, caption="Here's your statistics graph!")
+            await context.bot.send_photo(chat_id=chat_id, photo=i, caption="Here's your statistics graph!")
             i.close()
     elif query.data == 'detailed status':
         keyboard = [
@@ -110,7 +121,7 @@ def button(update: Update, context: CallbackContext):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         text = sweet_home_controller.devices_get_last_messages(False)
-        query.edit_message_text(text=text, reply_markup=reply_markup)
+        await query.edit_message_text(text=text, reply_markup=reply_markup)
     elif query.data == 'subscribe':
         keyboard = [
             [InlineKeyboardButton(_("Main menu"), callback_data='main menu')],
@@ -119,9 +130,9 @@ def button(update: Update, context: CallbackContext):
 
         if not sweet_home_controller.telegram_is_user_subsribed(chat_id):
             sweet_home_controller.telegram_set_user_subsribed(chat_id, True)
-            query.edit_message_text(text=_("You have subscribed to messages!"), reply_markup=reply_markup)
+            await query.edit_message_text(text=_("You have subscribed to messages!"), reply_markup=reply_markup)
         else:
-            query.edit_message_text(text=_("You are already subscribed."), reply_markup=reply_markup)
+            await query.edit_message_text(text=_("You are already subscribed."), reply_markup=reply_markup)
 
     # Handle unsubscription
     elif query.data == 'unsubscribe':
@@ -132,41 +143,57 @@ def button(update: Update, context: CallbackContext):
 
         if sweet_home_controller.telegram_is_user_subsribed(chat_id):
             sweet_home_controller.telegram_set_user_subsribed(chat_id, False)
-            query.edit_message_text(text=_("You have unsubscribed from messages."), reply_markup=reply_markup)
+            await query.edit_message_text(text=_("You have unsubscribed from messages."), reply_markup=reply_markup)
         else:
-            query.edit_message_text(text=_("You are not subscribed."), reply_markup=reply_markup)
+            await query.edit_message_text(text=_("You are not subscribed."), reply_markup=reply_markup)
     elif query.data == 'main menu':
         keyboard = MAIN_MENU
         reply_markup = InlineKeyboardMarkup(keyboard)
-        query.edit_message_text(text=_("Sweet home bot"), reply_markup=reply_markup)
+        await query.edit_message_text(text=_("Sweet home bot"), reply_markup=reply_markup)
 
 
-def telegram_bot_init(bot_token, mqtt_context):
+
+def telegram_bot_init(bot_token):
+    loop = asyncio.get_event_loop()
     bot = Bot(token=bot_token)
-    try:
-        updater = Updater(token=bot_token, use_context=True, request_kwargs={'read_timeout': 20, 'connect_timeout': 20})
-        dispatcher = updater.dispatcher
+    return {"bot":bot,
+            "loop":loop}
 
-        # Command handler for /start
-        dispatcher.add_handler(CommandHandler("start", start))
-        # CallbackQueryHandler to handle subscribe/unsubscribe button presses
-        dispatcher.add_handler(CallbackQueryHandler(button))
+def telegram_bot_start(bot_token):
+    # try:
+    #     updater = Updater(token=bot_token, use_context=True, request_kwargs={'read_timeout': 20, 'connect_timeout': 20})
+    #     dispatcher = updater.dispatcher
 
-        # Schedule the periodic message
-        #schedule.every().hour.do(send_periodic_message)
+    #     # Command handler for /start
+    #     dispatcher.add_handler(CommandHandler("start", start))
+    #     # CallbackQueryHandler to handle subscribe/unsubscribe button presses
+    #     dispatcher.add_handler(CallbackQueryHandler(button))
 
-        # Run the scheduler in a background thread
-        #def run_schedule():
-        #    while True:
-        #        schedule.run_pending()
-        #        time.sleep(1)
+    #     # Schedule the periodic message
+    #     #schedule.every().hour.do(send_periodic_message)
 
-        # Start the bot and the scheduler
-        updater.start_polling()
-    except Exception as e:
-        logging.exception("An error occurred while starting the bot.")
-    #run_schedule()
-    return bot
+    #     # Run the scheduler in a background thread
+    #     #def run_schedule():
+    #     #    while True:
+    #     #        schedule.run_pending()
+    #     #        time.sleep(1)
+
+    #     # Start the bot and the scheduler
+    #     updater.start_polling()
+    # except Exception as e:
+    #     logging.exception("An error occurred while starting the bot.")
+    # #run_schedule()
+
+    """Start the bot."""
+    # Create the Application and pass it your bot's token.
+    application = Application.builder().token(bot_token).build()
+
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(button))
+
+    # Run the bot until the user presses Ctrl-C
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
+
 
 def main():
     _mqtt_context = mqtt_control.mqtt_init(send_message)

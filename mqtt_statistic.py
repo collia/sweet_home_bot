@@ -11,7 +11,7 @@ matplotlib.use('Agg')  # Use a non-GUI backend
 
 buffer = {}
 BUFFER_MAX_LEN = 1000
-FILE = 'statistic.json'
+FILE = 'config/statistic.json'
 
 def statistic_init():
     upload_from_file(FILE)

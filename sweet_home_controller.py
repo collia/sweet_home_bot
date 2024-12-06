@@ -8,7 +8,7 @@ import json
 import math
 
 class Configuration:
-    settings_file = 'config.json'
+    settings_file = 'config/config.json'
     settings = {}
     telegram_bot = None
     def __init__(self):
@@ -149,14 +149,14 @@ def temperature_format_long(dev, payload):
     return json.dumps(payload, sort_keys=True, indent=4)
 
 
-def motion_detector_handler(dev, payload):
+def motion_detector_handler(bot, dev, payload):
     if payload['occupancy'] == True:
         name = _config.get_device_name(dev)
         msg = devices_callbacks[dev]["Format short"](dev, payload)
-        telegram_bot.send_message(_telegram_bot, name + ": " + msg)
+        telegram_bot.send_message(bot, name + ": " + msg)
 
 prev_sent_message = {}
-def temperature_handler(dev, payload):
+def temperature_handler(bot, dev, payload):
     if not dev in  prev_sent_message:
         prev_message = None
     else:
@@ -165,7 +165,7 @@ def temperature_handler(dev, payload):
     if prev_message == None or  abs(prev_message['temperature'] - payload['temperature']) > 1 or abs(prev_message['humidity'] - payload['humidity']) > 3:
        name = _config.get_device_name(dev)
        msg = devices_callbacks[dev]["Format short"](dev, payload)
-       telegram_bot.send_message(_telegram_bot, name + ":" + msg)
+       telegram_bot.send_message(bot, name + ":" + msg)
        prev_sent_message[dev] = payload
 
 devices_callbacks = {
@@ -181,8 +181,8 @@ devices_callbacks = {
     }
 }
 
-def mqtt_device_message(devices_tree):
-    telegram_bot.send_html_message(_telegram_bot, dict_to_html(devices_tree))
+def mqtt_device_message(bot, devices_tree):
+    telegram_bot.send_html_message(bot, dict_to_html(devices_tree))
     #print(devices_tree)
 
 def dict_to_html(data, level=0):
@@ -201,19 +201,20 @@ def dict_to_html(data, level=0):
                 html.append(f"{indent} - {value}")
     return "\n".join(html)
 
-def mqtt_message(device, msg):
+def mqtt_message(bot, device, msg):
     if device in devices_callbacks:
-        devices_callbacks[device]["Handler"](device, msg)
+        devices_callbacks[device]["Handler"](bot, device, msg)
     else:
-        telegram_bot.send_message(_telegram_bot, msg)
-    mqtt_statistic.statistic_append(device, msg)
+        telegram_bot.send_message(bot, msg)
+    mqtt_statistic.statistic_append(bot, device, msg)
 
 def controller_init():
-    global _telegram_bot
-    _mqtt_context = mqtt_control.mqtt_init(_config.get_mqtt_ip(), _config.get_mqtt_port(), mqtt_message, mqtt_device_message)
-    _telegram_bot = (telegram_bot.telegram_bot_init(_config.get_telegram_token(), _mqtt_context))
+    _telegram_bot = telegram_bot.telegram_bot_init(_config.get_telegram_token())
+    _mqtt_context = mqtt_control.mqtt_init(_config.get_mqtt_ip(), _config.get_mqtt_port(), mqtt_message, mqtt_device_message, _telegram_bot)
     mqtt_statistic.statistic_init()
     mqtt_control.mqtt_run(_mqtt_context)
+    telegram_bot.telegram_bot_start(_config.get_telegram_token())
+
 
 
 if __name__ == '__main__':

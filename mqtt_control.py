@@ -18,7 +18,7 @@ def on_device_message(mosq, obj, msg):
             _devices.append(dev)
             endpoint = 'zigbee2mqtt/' + dev['friendly_name']
             obj['client'].subscribe(endpoint, 0)
-    obj['device callback'](_generate_device_tree(payload))
+    obj['device callback'](obj['bot'], _generate_device_tree(payload))
 
 def get_devices_list():
     return [dev['friendly_name'] for dev in _devices]
@@ -60,16 +60,19 @@ def _generate_device_tree(msg):
 def on_message(mosq, obj, msg):
     device = msg.topic.split('/')[-1]
     payload = json.loads(msg.payload.decode("utf-8"))
-    obj["callback"](device, payload)
+    obj["callback"](obj['bot'], device, payload)
 
 def on_publish(mosq, obj, mid):
     pass
 
-def registry_device_message(ip, port, callback, device_callback):
+def registry_device_message(ip, port, callback, device_callback, bot):
     client = paho.Client()
     client.on_message = on_message
     client.on_publish = on_publish
-    context = {'client': client, "callback":callback, "device callback":device_callback }
+    context = {'client': client,
+               "callback":callback,
+               "device callback":device_callback,
+               "bot": bot}
     client.user_data_set(context)
 
     #client.tls_set('root.ca', certfile='c1.crt', keyfile='c1.key')
@@ -90,12 +93,12 @@ def get_detailed_info(context):
         #device = m.split('/')[-1]
         #client.publish(m + '/get', '{"state": ""}')
 
-def mqtt_init(ip, port, callback, device_callback):
-    context = registry_device_message(ip, port, callback, device_callback)
+def mqtt_init(ip, port, callback, device_callback, bot):
+    context = registry_device_message(ip, port, callback, device_callback, bot)
     return context
 
 def mqtt_run(context):
-    context["client"].loop_forever()
+    context["client"].loop_start()
 
 def mqtt_print_cb(str):
     print(str)
