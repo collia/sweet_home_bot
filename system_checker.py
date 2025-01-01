@@ -3,19 +3,18 @@
 
 import paho.mqtt.client as mqtt
 import json
+import psutil
 
 def _get_disk_usage():
-    import psutil
     return psutil.disk_usage('/').percent
 
 def _get_memory_usage():
-    import psutil
     return psutil.virtual_memory().percent
+
 def _get_cpu_usage():
-    import psutil
     return psutil.cpu_percent(interval=1)
+
 def _get_temperature():
-    import psutil
     return psutil.sensors_temperatures()['coretemp'][0].current
 
 def on_message(client, userdata, msg):
