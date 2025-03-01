@@ -103,7 +103,7 @@ async def button(update: Update, context: CallbackContext):
         images = sweet_home_controller.devices_get_statistic_graph(1)
         await query.edit_message_text(text=_("1 day statistic"), reply_markup=reply_markup)
         for i in images:
-            await context.bot.send_photo(chat_id=chat_id, photo=i, caption="Here's your statistics graph!")
+            await context.bot.send_photo(chat_id=chat_id, photo=i, caption=_("Here's your daily statistics graph!"))
             i.close()
     elif query.data == 'statistic 7 day':
         keyboard = [
@@ -111,9 +111,9 @@ async def button(update: Update, context: CallbackContext):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         images = sweet_home_controller.devices_get_statistic_graph(7)
-        await query.edit_message_text(text=_("week statistic"), reply_markup=reply_markup)
+        await query.edit_message_text(text=_("Week statistic"), reply_markup=reply_markup)
         for i in images:
-            await context.bot.send_photo(chat_id=chat_id, photo=i, caption="Here's your statistics graph!")
+            await context.bot.send_photo(chat_id=chat_id, photo=i, caption=_("Here's your weekly statistics graph!"))
             i.close()
     elif query.data == 'detailed status':
         keyboard = [

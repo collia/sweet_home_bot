@@ -206,7 +206,7 @@ def mqtt_message(bot, device, msg):
         devices_callbacks[device]["Handler"](bot, device, msg)
     else:
         telegram_bot.send_message(bot, msg)
-    mqtt_statistic.statistic_append(bot, device, msg)
+    mqtt_statistic.statistic_append(device, msg)
 
 def controller_init():
     _telegram_bot = telegram_bot.telegram_bot_init(_config.get_telegram_token())
