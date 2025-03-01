@@ -178,6 +178,16 @@ devices_callbacks = {
         "Format short": temperature_format_short,
         "Format detailed": temperature_format_long,
          "Handler": temperature_handler,
+    },
+    '0xa4c138dd8ca21bb9': {
+        "Format short": temperature_format_short,
+        "Format detailed": temperature_format_long,
+         "Handler": temperature_handler,
+    },
+    '0xa4c138ef04a551e1': {
+        "Format short": temperature_format_short,
+        "Format detailed": temperature_format_long,
+         "Handler": temperature_handler,
     }
 }
 
