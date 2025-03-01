@@ -75,7 +75,16 @@ def get_statistic_graph(dev_id, fields, days, title):
         timestamps = [entry[0] for entry in filtered_data]
         data = {}
         for field in fields:
-            data[field[0]] = [entry[1][field[0]] for entry in filtered_data]
+            print(filtered_data)
+            #data[field[0]] = [entry[1][field[0]] for entry in filtered_data]
+            result = []
+            for entry in filtered_data:
+                if field[0] in entry[1]:
+                    result.append(entry[1][field[0]])
+                else:
+                    print(f'Error: {field[0]} not in {entry[1]}')
+                    result.append(0)
+            data[field[0]] = result
 
 
     # Plotting
